@@ -12,11 +12,16 @@ return {
         title = "Explorer",
         size = { width = 0.25 },
       },
+      {
+        ft = { "dapui_scopes", "dapui_breakpoints", "dapui_stacks", "dapui_watches" },
+        title = "DAP UI",
+        size = { width = 0.25 },
+      },
     },
     bottom = {
       {
-        ft = { "dap-repl", "dapui_console" },
-        title = "DAP REPL",
+        ft = "dapui_console",
+        title = "DAP Console",
         size = { height = 0.25 },
       },
       {
@@ -26,13 +31,6 @@ return {
         filter = function(_buf, win)
           return not vim.w[win].trouble_preview
         end,
-      },
-    },
-    right = {
-      {
-        ft = { "dapui_scopes", "dapui_breakpoints", "dapui_stacks", "dapui_watches" },
-        title = "DAP UI",
-        size = { width = 0.35 },
       },
     },
   },

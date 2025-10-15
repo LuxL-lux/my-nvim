@@ -11,7 +11,7 @@ return {
 
     dap.configurations.python = {
       {
-        justMyCode = false,
+        justMyCode = true,
         type = "python",
         request = "launch",
         name = "Launch file",

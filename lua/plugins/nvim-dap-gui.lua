@@ -1,6 +1,16 @@
 local explorer_restore = false
 local explorer_prev_win = nil
 
+local function equalize_edge(pos)
+  local ok, editor = pcall(require, "edgy.editor")
+  if not ok then
+    return
+  end
+  vim.schedule(function()
+    editor.equalize(pos)
+  end)
+end
+
 local function get_explorer_pickers()
   local ok, picker = pcall(require, "snacks.picker")
   if not ok then
@@ -99,8 +109,9 @@ local function toggle_dapui_with_explorer()
   if hide_explorer() then
     explorer_restore = true
   end
-  dapui.open({ layout = 1 })
-  dapui.open({ layout = 2 })
+  dapui.open({ layout = 1, reset = true })
+  dapui.open({ layout = 2, reset = true })
+  equalize_edge("left")
 end
 
 return {
@@ -120,14 +131,14 @@ return {
           { id = "stacks", size = 0.25 },
           { id = "watches", size = 0.25 },
         },
-        size = 40,
-        position = "right",
+        size = 0.25,
+        position = "left",
       },
       {
         elements = {
           { id = "console", size = 1 },
         },
-        size = 12,
+        size = 0.3,
         position = "bottom",
       },
     },
@@ -138,14 +149,13 @@ return {
     dapui.setup(opts)
     dap.listeners.after.event_initialized["dapui_config"] = function()
       explorer_restore = hide_explorer()
-      dapui.open({})
+      dapui.open({ reset = true })
+      equalize_edge("left")
     end
     local function close_handler()
       dapui.close({ layout = 1 })
       maybe_restore_explorer()
-      vim.schedule(function()
-        dapui.open({ layout = 2 })
-      end)
+      equalize_edge("left")
     end
     dap.listeners.before.event_terminated["dapui_config"] = close_handler
     dap.listeners.before.event_exited["dapui_config"] = close_handler
