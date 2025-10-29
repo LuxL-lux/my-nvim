@@ -74,7 +74,13 @@ return {
           return require("codecompanion.adapters").extend("openai_compatible", {
             env = {
               url = "https://openrouter.ai/api",
-              api_key = "cmd: gpg --batch --quiet --decrypt ~/.credentials/openrouter_api_key.gpg",
+              api_key = function()
+                local handle =
+                  io.popen("sops --decrypt ~/dotfiles/secrets.gpg.env | awk -F'=' '/^OPENROUTER_API_KEY=/ {print $2}'")
+                local key = handle:read("*a")
+                handle:close()
+                return key:gsub("%s+$", "") -- trim and return
+              end,
               chat_url = "/v1/chat/completions",
             },
             schema = {
@@ -165,7 +171,7 @@ return {
             -- Memory system (requires VectorCode CLI)
             memory = {
               -- Automatically index summaries when they are generated
-              auto_create_memories_on_summary_generation = false,
+              auto_create_memories_on_summary_generation = true,
               -- Path to the VectorCode executable
               vectorcode_exe = "vectorcode",
               -- Tool configuration
@@ -188,7 +194,7 @@ return {
     vim.keymap.set({ "n", "v" }, "<leader>a", "<cmd>CodeCompanionChat Toggle<cr>", { noremap = true, silent = true })
     vim.keymap.set("v", "ga", "<cmd>CodeCompanionChat Add<cr>", { noremap = true, silent = true })
 
-    vim.keymap.set("n", "<leader>cs", select_model, { desc = "Select Gemini Model" })
+    vim.keymap.set("n", "<leader>cm", select_model, { desc = "Select Model" })
     -- Expand 'cc' into 'CodeCompanion' in the command line
     vim.cmd([[cab cc CodeCompanion]])
   end,

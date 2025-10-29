@@ -21,6 +21,24 @@ return {
         },
       },
     })
+
+    local home = vim.fn.expand("~")
+    local schema_path = string.format("file://%s/Projects/Priv/lazygit/schema/config.json", home)
+    local config_path = string.format("%s/.config/lazygit/config.yml", home)
+    opts.servers.yamlls = vim.tbl_deep_extend("force", opts.servers.yamlls or {}, {
+      settings = {
+        yaml = {
+          schemaStore = {
+            enable = false,
+            url = "",
+          },
+          schemas = {
+            ["https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json"] = false,
+            [schema_path] = { config_path },
+          },
+        },
+      },
+    })
     return opts
   end,
 }
