@@ -9,6 +9,9 @@ return {
       bib = { "bibtex-tidy" },
       json = { "prettierd", "prettier" },
       xml = { "xmlformatter" },
+      typescript = { "biome" },
+      postgres = { "pg_format" },
+      sql = { "sqlfluff" },
     },
     formatters = {
       csharpier = {

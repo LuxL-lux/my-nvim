@@ -1,7 +1,11 @@
 -- Keymaps are automatically loaded on the VeryLazy event
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
+-- Delete the buffer navigation shit
+vim.keymap.del("n", "<S-h>")
+vim.keymap.del("n", "<S-l>")
 
+vim.keymap.set("n", "<leader>fuck", "<cmd>CellularAutomaton make_it_rain<CR>")
 -- Enhanced gf to handle file paths with line and column numbers
 -- e.g., src/app.py:28:5 -> opens file at line 28, column 5
 vim.keymap.set("n", "gf", function()
@@ -33,7 +37,7 @@ vim.keymap.set("n", "gf", function()
           best_match = {
             file = filepath,
             line = tonumber(line_num),
-            col = col_num ~= "" and tonumber(col_num) or nil
+            col = col_num ~= "" and tonumber(col_num) or nil,
           }
         end
       end
@@ -55,3 +59,16 @@ vim.keymap.set("n", "gf", function()
     vim.cmd("normal! gf")
   end
 end, { desc = "Go to file with line and column support" })
+
+vim.keymap.set("n", "<leader>dd", function()
+  local var = vim.fn.expand("<cword>")
+  local py = [[
+import importlib.util, pathlib
+p = pathlib.Path.home() / ".config/nvim/python_helpers/inspect_df.py"
+spec = importlib.util.spec_from_file_location("inspect_df", p)
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+m.inspect_df(]] .. var .. [[)
+]]
+  require("dapui").eval(py)
+end, { desc = "Inspect DF with dv" })

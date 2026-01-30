@@ -2,6 +2,8 @@ return {
   "neovim/nvim-lspconfig",
   opts = function(_, opts)
     opts.servers = opts.servers or {}
+    opts.servers.bacon_ls = { enabled = diagnostics == "bacon_ls" }
+    opts.servers.rust_analyzer = { enabled = false }
 
     local solarized_lib = vim.fn.stdpath("data") .. "/lazy/solarized.nvim/lua"
     opts.servers.lua_ls = vim.tbl_deep_extend("force", opts.servers.lua_ls or {}, {
@@ -20,6 +22,8 @@ return {
       },
     })
 
+    opts.servers.pyright = {}
+
     local home = vim.fn.expand("~")
     local schema_path = string.format("file://%s/Projects/Priv/lazygit/schema/config.json", home)
     local config_path = string.format("%s/.config/lazygit/config.yml", home)
@@ -37,6 +41,14 @@ return {
         },
       },
     })
+    local lspconfig = require("lspconfig")
+
+    opts.servers.zls = {
+      cmd = { "zls" },
+      filetypes = { "zig", "zir" },
+      root_dir = lspconfig.util.root_pattern("build.zig", ".git"),
+      single_file_support = true,
+    }
     return opts
   end,
 }
