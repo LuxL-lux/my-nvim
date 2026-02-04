@@ -38,12 +38,8 @@ return {
       },
     })
 
-    vim.api.nvim_create_autocmd("User", {
-      pattern = "DbeeOpen",
-      callback = function()
-        azure_source:auto_connect()
-        require("utils.dbee_sql_notes").sync()
-      end,
-    })
+    -- plugin is lazy-loaded, so config runs on first dbee command
+    require("utils.dbee_sql_notes").sync()
+    azure_source:auto_connect()
   end,
 }

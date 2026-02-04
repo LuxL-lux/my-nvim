@@ -1,104 +1,97 @@
 local M = {}
 
-local function repo_root()
-  local cwd = vim.fn.getcwd()
-  if cwd == "" then
+local function get_root()
+  local root = vim.fn.getcwd()
+  if not root or root == "" then
     return nil
   end
-  local git_dir = vim.fn.finddir(".git", cwd .. ";")
-  if git_dir == "" then
-    return cwd
+  return root
+end
+
+local function clean_relative(rel)
+  rel = rel:gsub("^[./]+", "")
+  rel = rel:gsub("[\\/]+", "_")
+  rel = rel:gsub("[^%w%._-]", "_")
+  rel = rel:gsub("__+", "_")
+  rel = rel:gsub("^_+", "")
+  rel = rel:gsub("_+$", "")
+  if rel == "" then
+    rel = "script"
   end
-  return vim.fn.fnamemodify(git_dir, ":h")
-end
-
-local function ensure_dir(path)
-  if path == "" or vim.fn.isdirectory(path) == 1 then
-    return true
+  if not rel:match("%.sql$") then
+    rel = rel .. ".sql"
   end
-  vim.fn.mkdir(path, "p")
-  return vim.fn.isdirectory(path) == 1
+  return rel
 end
 
-local function sanitize_name(rel)
-  local cleaned = rel:gsub("[\\/]+", "_"):gsub("[^%w_%-]", "_")
-  cleaned = cleaned:gsub("__+", "_")
-  cleaned = cleaned:gsub("^_+", ""):gsub("_+$", "")
-  return cleaned
-end
-
-local function list_sql_files(root)
-  if not root or root == "" then
-    return {}
+local function remove_symlinks(dir)
+  if vim.fn.isdirectory(dir) == 0 then
+    return
   end
-  return vim.fs.find(function(name)
-    return name:match("%.sql$")
-  end, { path = root, type = "file" })
-end
-
-local function note_name_for(path, root)
-  local rel = vim.fn.fnamemodify(path, ":.")
-  local prefix = vim.fn.fnamemodify(root, ":p")
-  if rel:sub(1, #prefix) == prefix then
-    rel = rel:sub(#prefix + 1)
-  end
-  rel = rel:gsub("^/", "")
-  local clean = sanitize_name(rel)
-  local short_hash = vim.fn.sha256(rel):sub(1, 8)
-  local name = string.format("sql-%s-%s.sql", clean == "" and "root" or clean, short_hash)
-  return name
-end
-
-local function remove_old_links(dir, wanted)
-  local matches = vim.fn.globpath(dir, "sql-*.sql", true, true)
-  for _, file in ipairs(matches) do
-    local base = vim.fn.fnamemodify(file, ":t")
-    if not wanted[base] then
-      vim.fn.delete(file)
+  for _, file in ipairs(vim.split(vim.fn.glob(dir .. "/*"), "\n")) do
+    if file ~= "" then
+      local stat = vim.loop.fs_lstat(file)
+      if stat and stat.type == "link" then
+        vim.fn.delete(file)
+      end
     end
   end
 end
 
-local function ensure_symlink(src, dst)
+local function enumerate_sql(root)
+  local files = vim.fs.find(function(name)
+    return name:match("%.sql$")
+  end, { path = root, type = "file", limit = math.huge })
+  local filtered = {}
+  for _, path in ipairs(files) do
+    if not path:find("/.git/") and not path:find("\\.git\\") then
+      table.insert(filtered, path)
+    end
+  end
+  return filtered
+end
+
+local function create_symlink(src, dst)
   local stat = vim.loop.fs_stat(dst)
   if stat then
-    local ok, target = pcall(vim.loop.fs_readlink, dst)
-    if ok and target == src then
-      return true
-    end
-    vim.loop.fs_unlink(dst)
+    vim.fn.delete(dst)
   end
-  local success, err = pcall(vim.loop.fs_symlink, src, dst)
-  if not success then
-    vim.notify(string.format("Failed to link %s: %s", dst, err), vim.log.levels.WARN)
+  local ok, err = pcall(vim.loop.fs_symlink, src, dst)
+  if not ok then
+    return false, err
   end
+  return true
 end
 
 function M.sync()
-  local root = repo_root()
+  local root = get_root()
   if not root then
-    return
+    return true
   end
+
   local notes_dir = vim.fn.stdpath("state") .. "/dbee/notes/global"
-  if not ensure_dir(notes_dir) then
-    vim.notify("Unable to create dbee notes directory", vim.log.levels.ERROR)
-    return
-  end
+  vim.fn.mkdir(notes_dir, "p")
+  remove_symlinks(notes_dir)
 
-  local scripts = list_sql_files(root)
-  if #scripts == 0 then
-    return
-  end
-
-  local wanted = {}
+  local scripts = enumerate_sql(root)
+  local seen = {}
   for _, path in ipairs(scripts) do
-    local name = note_name_for(path, root)
-    wanted[name] = true
-    local target = notes_dir .. "/" .. name
-    ensure_symlink(path, target)
+    local rel = vim.fn.fnamemodify(path, ":.")
+    local name = clean_relative(rel)
+    local candidate = notes_dir .. "/" .. name
+    local suffix = 0
+    while vim.fn.filereadable(candidate) == 1 or vim.fn.isdirectory(candidate) == 1 do
+      suffix = suffix + 1
+      candidate = notes_dir .. "/" .. name:gsub("%.sql$", "") .. "_" .. suffix .. ".sql"
+    end
+    local ok, err = create_symlink(path, candidate)
+    if not ok then
+      local contents = vim.fn.readfile(path)
+      vim.fn.writefile(contents, candidate)
+    end
+    seen[candidate] = path
   end
-
-  remove_old_links(notes_dir, wanted)
+  return true
 end
 
 return M
