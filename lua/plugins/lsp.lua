@@ -6,6 +6,7 @@ return {
     opts.servers.rust_analyzer = { enabled = false }
 
     local solarized_lib = vim.fn.stdpath("data") .. "/lazy/solarized.nvim/lua"
+    opts.servers.jsonls = { mason = false, enabled = false }
     opts.servers.lua_ls = vim.tbl_deep_extend("force", opts.servers.lua_ls or {}, {
       settings = {
         Lua = {

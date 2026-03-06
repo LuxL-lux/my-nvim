@@ -7,7 +7,7 @@ return {
       plaintex = { "tex-fmt" },
       latex = { "tex-fmt" },
       bib = { "bibtex-tidy" },
-      json = { "prettierd", "prettier" },
+      json = { "jq"},
       xml = { "xmlformatter" },
       typescript = { "biome" },
       postgres = { "pg_format" },

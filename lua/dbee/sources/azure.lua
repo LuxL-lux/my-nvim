@@ -133,21 +133,13 @@ local function run_az(cmd, on_success, on_error)
   exec()
 end
 
--- ---------------------------------------------------------------------------
--- Small utilities (kept from original)
--- ---------------------------------------------------------------------------
-
 local function sanitize_rule_name(value)
   if not value or value == "" then
-    return "llx-wanne-eickel"
+    return "user_access_metadb"
   end
   local sanitized = value:gsub("%s+", "-"):gsub("[^%w%-]", "")
   return sanitized
 end
-
--- ---------------------------------------------------------------------------
--- Cache helpers
--- ---------------------------------------------------------------------------
 
 local function load_cache()
   local fd = io.open(cache_path, "r")
@@ -185,10 +177,14 @@ end
 
 local function save_keychain(account, value, callback)
   run_job({
-    "security", "add-generic-password",
-    "-s", keychain_service,
-    "-a", account,
-    "-w", value,
+    "security",
+    "add-generic-password",
+    "-s",
+    keychain_service,
+    "-a",
+    account,
+    "-w",
+    value,
     "-U", -- update if exists
   }, function()
     if callback then
@@ -204,9 +200,12 @@ end
 
 local function load_keychain(account, callback)
   run_job({
-    "security", "find-generic-password",
-    "-s", keychain_service,
-    "-a", account,
+    "security",
+    "find-generic-password",
+    "-s",
+    keychain_service,
+    "-a",
+    account,
     "-w", -- print only the password value
   }, function(out)
     local value = vim.fn.trim(out)
@@ -281,14 +280,14 @@ function AzureSqlSource:resolve_rule_name(callback)
   run_job({ "git", "config", "user.name" }, function(result)
     local name = vim.fn.trim(result)
     if name == "" then
-      name = vim.env.USER or "llx"
+      name = vim.env.USER or "nvim"
     end
     self.rule_name = sanitize_rule_name(name)
     callback(self.rule_name)
   end, function()
-    local fallback = sanitize_rule_name(vim.env.USER or "llx")
+    local fallback = sanitize_rule_name(vim.env.USER or "nvim")
     self.rule_name = fallback
-    callback(self.rule_name)
+    callback(self.rule_name .. "-local")
   end)
 end
 
@@ -448,10 +447,16 @@ function AzureSqlSource:switch()
   function step_list_databases(server_name)
     chosen_server = server_name
     run_az({
-      "az", "sql", "db", "list",
-      "--server", server_name,
-      "--resource-group", chosen_rg,
-      "-o", "json",
+      "az",
+      "sql",
+      "db",
+      "list",
+      "--server",
+      server_name,
+      "--resource-group",
+      chosen_rg,
+      "-o",
+      "json",
     }, function(out)
       local ok, dbs = pcall(vim.fn.json_decode, out)
       if not ok or type(dbs) ~= "table" then
@@ -511,7 +516,10 @@ function AzureSqlSource:connect(subscription_id, resource_group, server_name, da
   local short, env = server_name:match("^data%-sqlsrv%-meta%-(.+)%-(%w+)$")
   if not short or not env then
     get_notify()(
-      string.format("Server name '%s' does not match pattern data-sqlsrv-meta-{short}-{env}. Cannot derive Key Vault name.", server_name),
+      string.format(
+        "Server name '%s' does not match pattern data-sqlsrv-meta-{short}-{env}. Cannot derive Key Vault name.",
+        server_name
+      ),
       vim.log.levels.ERROR
     )
     done()
@@ -530,15 +538,28 @@ function AzureSqlSource:connect(subscription_id, resource_group, server_name, da
       self:resolve_rule_name(function(rule_name)
         -- create/update firewall rule (always)
         run_az({
-          "az", "sql", "server", "firewall-rule", "create",
-          "--resource-group", resource_group,
-          "--server", server_name,
-          "--name", rule_name,
-          "--start-ip-address", ip,
-          "--end-ip-address", ip,
-          "--output", "none",
+          "az",
+          "sql",
+          "server",
+          "firewall-rule",
+          "create",
+          "--resource-group",
+          resource_group,
+          "--server",
+          server_name,
+          "--name",
+          rule_name,
+          "--start-ip-address",
+          ip,
+          "--end-ip-address",
+          ip,
+          "--output",
+          "none",
         }, function()
-          get_notify()(string.format("Firewall rule %s on %s allows %s", rule_name, server_name, ip), vim.log.levels.INFO)
+          get_notify()(
+            string.format("Firewall rule %s on %s allows %s", rule_name, server_name, ip),
+            vim.log.levels.INFO
+          )
           self:resolve_credentials(vault, server_name, force_refresh, function(username, password)
             if not username or not password then
               done()
@@ -548,7 +569,10 @@ function AzureSqlSource:connect(subscription_id, resource_group, server_name, da
             done()
           end)
         end, function(err)
-          get_notify()(string.format("Failed to update firewall rule on %s: %s", server_name, err), vim.log.levels.ERROR)
+          get_notify()(
+            string.format("Failed to update firewall rule on %s: %s", server_name, err),
+            vim.log.levels.ERROR
+          )
           done()
         end)
       end)
@@ -583,18 +607,32 @@ end
 function AzureSqlSource:fetch_credentials_from_vault(vault, server_name, callback)
   -- fetch from Key Vault
   local user_cmd = {
-    "az", "keyvault", "secret", "show",
-    "--vault-name", vault,
-    "--name", server_name .. "-username",
-    "--query", "value",
-    "-o", "tsv",
+    "az",
+    "keyvault",
+    "secret",
+    "show",
+    "--vault-name",
+    vault,
+    "--name",
+    server_name .. "-username",
+    "--query",
+    "value",
+    "-o",
+    "tsv",
   }
   local pass_cmd = {
-    "az", "keyvault", "secret", "show",
-    "--vault-name", vault,
-    "--name", server_name .. "-password",
-    "--query", "value",
-    "-o", "tsv",
+    "az",
+    "keyvault",
+    "secret",
+    "show",
+    "--vault-name",
+    vault,
+    "--name",
+    server_name .. "-password",
+    "--query",
+    "value",
+    "-o",
+    "tsv",
   }
   run_az(user_cmd, function(username_result)
     local username = vim.fn.trim(username_result)
@@ -622,14 +660,31 @@ function AzureSqlSource:fetch_credentials_from_vault(vault, server_name, callbac
 end
 
 -- ---------------------------------------------------------------------------
+-- URL-encode a string (percent-encoding for userinfo in URIs)
+-- ---------------------------------------------------------------------------
+
+local function url_encode(str)
+  return (str:gsub("[^%w%-%.%_~]", function(c)
+    return string.format("%%%02X", string.byte(c))
+  end))
+end
+
+-- ---------------------------------------------------------------------------
 -- activate_connection — set as the single active connection + save cache
 -- ---------------------------------------------------------------------------
 
-function AzureSqlSource:activate_connection(subscription_id, resource_group, server_name, database_name, username, password)
+function AzureSqlSource:activate_connection(
+  subscription_id,
+  resource_group,
+  server_name,
+  database_name,
+  username,
+  password
+)
   local url = string.format(
     "sqlserver://%s:%s@%s.database.windows.net:1433?database=%s&encrypt=true",
-    username,
-    password,
+    url_encode(username),
+    url_encode(password),
     server_name,
     database_name
   )

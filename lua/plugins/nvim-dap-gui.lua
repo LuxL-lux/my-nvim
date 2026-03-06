@@ -121,6 +121,11 @@ return {
     keys = {
       { "<leader>du", toggle_dapui_with_explorer, desc = "Dap UI" },
       { "<leader>de", function() require("dapui").eval() end, desc = "Eval", mode = {"n", "v"} },
+      { "<leader>dr", function()
+        local width = math.floor(vim.o.columns * 0.6)
+        local height = math.floor(vim.o.lines * 0.4)
+        require("dapui").float_element("repl", { enter = true, width = width, height = height })
+      end, desc = "REPL (float)" },
     },
   opts = {
     layouts = {
